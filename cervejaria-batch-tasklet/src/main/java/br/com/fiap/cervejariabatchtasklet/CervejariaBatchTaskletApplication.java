@@ -40,7 +40,7 @@ public class CervejariaBatchTaskletApplication {
     }
 
     @Bean
-    public Step step(StepBuilderFactory stepBuilderFactory,
+    public Step steps(StepBuilderFactory stepBuilderFactory,
                      Tasklet tasklet) {
 		return stepBuilderFactory.get("Delete File Step")
 				.tasklet(tasklet)
@@ -49,7 +49,7 @@ public class CervejariaBatchTaskletApplication {
     }
 
     @Bean
-	public Job job(JobBuilderFactory jobBuilderFactory,
+	public Job jobs(JobBuilderFactory jobBuilderFactory,
 				   Step step) {
     	return jobBuilderFactory.get("Delete File Job")
 				.start(step)

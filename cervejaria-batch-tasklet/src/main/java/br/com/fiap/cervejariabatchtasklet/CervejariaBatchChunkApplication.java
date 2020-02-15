@@ -9,12 +9,14 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -32,7 +34,7 @@ public class CervejariaBatchChunkApplication {
     Logger logger = LoggerFactory.getLogger(CervejariaBatchChunkApplication.class);
 
     @Bean
-    public FlatFileItemReader<Pessoa> itemReader(@Value("file.input") Resource resource) {
+    public FlatFileItemReader<Pessoa> itemReader(@Value("${file.input}") Resource resource) {
         return new FlatFileItemReaderBuilder<Pessoa>()
                 .delimited()
                 .delimiter(";")
@@ -60,7 +62,30 @@ public class CervejariaBatchChunkApplication {
         return new JdbcBatchItemWriterBuilder<Pessoa>().
                 beanMapped()
                 .dataSource(dataSource)
-                .sql("INSERT INTO TP_PESSOA (NOME, CPF) VALUES(:nome, :cpf)")
+                .sql("INSERT INTO TB_PESSOA (NOME, CPF) VALUES(:nome, :cpf)")
+                .build();
+    }
+
+    @Bean
+    @Qualifier("stepChunk")
+    public Step step(StepBuilderFactory stepBuilderFactory,
+                     ItemReader<Pessoa> pessoaItemReader,
+                     ItemProcessor<Pessoa, Pessoa> pessoaPessoaItemProcessor,
+                     ItemWriter<Pessoa> pessoaItemWriter) {
+
+        return stepBuilderFactory.get("step processar pessoa").
+                <Pessoa, Pessoa>chunk(2)
+                .reader(pessoaItemReader)
+                .processor(pessoaPessoaItemProcessor)
+                .writer(pessoaItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Job job(JobBuilderFactory jobBuilderFactory,
+                   @Qualifier("stepChunk") Step step) {
+        return jobBuilderFactory.get("job processar pessoa")
+                .start(step)
                 .build();
     }
 
