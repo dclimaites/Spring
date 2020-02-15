@@ -8,6 +8,10 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
@@ -17,6 +21,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.nio.file.Paths;
 
@@ -35,6 +40,27 @@ public class CervejariaBatchChunkApplication {
                 .resource(resource)
                 .targetType(Pessoa.class)
                 .name("FIle Item Reader")
+                .build();
+    }
+
+    @Bean
+    public ItemProcessor<Pessoa, Pessoa> itemProcessor() {
+        return pessoa -> {
+            pessoa.setNome(pessoa.getNome().toUpperCase());
+            pessoa.setCpf(
+                    pessoa.getCpf()
+                            .replaceAll("\\.", "")
+                            .replace("-", ""));
+            return pessoa;
+        };
+    }
+
+    @Bean
+    public ItemWriter<Pessoa> itemWriter(DataSource dataSource) {
+        return new JdbcBatchItemWriterBuilder<Pessoa>().
+                beanMapped()
+                .dataSource(dataSource)
+                .sql("INSERT INTO TP_PESSOA (NOME, CPF) VALUES(:nome, :cpf)")
                 .build();
     }
 
